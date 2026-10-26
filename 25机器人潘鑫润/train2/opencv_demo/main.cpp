@@ -6,7 +6,7 @@ using namespace std;
 int main()
 {
     
-    Mat img = imread("/home/pan/DATA/train2/opencv_demo/3.png");
+    Mat img = imread("../3.png");
     if(img.empty())
     {
         cout<<"该图片不存在"<<endl;

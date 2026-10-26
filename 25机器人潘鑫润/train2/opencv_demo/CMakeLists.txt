@@ -8,7 +8,7 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 # 3. 生成可执行文件
-add_executable(main image_read.cpp)
+add_executable(main main.cpp)
 
 # 4. 链接 OpenCV 库
 target_link_libraries(main ${OpenCV_LIBS})
