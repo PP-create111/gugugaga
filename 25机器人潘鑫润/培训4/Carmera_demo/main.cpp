@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 
 /*===============参数配置==============*/
 const Size  CHESSBOARD_SIZE(10, 7);        // 内角点: 宽10 高7
-const float SQUARE_SIZE = 5.0f;           // 方格边长(mm)
+const float SQUARE_SIZE = 5.0f;            // 方格边长(mm)
 const string READ_DIR      = "./cam_mix_img";  // 输入图片目录
 const string BEFORE_CORNER = "./before_corners";       // 保存: 带角点的图
 const string AFTER_CORNER  = "./after_corners";   // 保存: 去畸变后的图
@@ -53,9 +53,17 @@ int main()
 
     //======================准备世界坐标====================
     vector<Point3f> objs;
+    // 参考图中的角点顺序：右下角为起点(0,0)，往左递增，然后往上换行。
+    // 所以我们反转 X 和 Y 的坐标生成逻辑，让序号1落在右下角
     for (int i = 0; i < CHESSBOARD_SIZE.height; i++)
+    {
         for (int j = 0; j < CHESSBOARD_SIZE.width; j++)
-            objs.push_back(Point3f(j * SQUARE_SIZE, i * SQUARE_SIZE, 0));  
+        {
+            objs.push_back(Point3f((CHESSBOARD_SIZE.width - 1 - j) * SQUARE_SIZE, 
+                                   (CHESSBOARD_SIZE.height - 1 - i) * SQUARE_SIZE, 
+                                   0));
+        }
+    }
 
     vector<vector<Point3f>> objpoints;
     vector<vector<Point2f>> imagepoints;
@@ -109,7 +117,7 @@ int main()
                 cerr << "角点图保存失败: " << outPath << endl;
 
             imshow("corners", imgColor);
-            waitKey(100);   
+            waitKey(50);   
         }
     }
 
@@ -164,6 +172,7 @@ int main()
     Mat mapx, mapy;
     initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),
                             newMatrix, imageSize, CV_32FC1, mapx, mapy);
+                            
     for (size_t i = 0; i < valid_images.size(); i++)
     {
         Mat src = imread(valid_images[i]);
@@ -177,11 +186,55 @@ int main()
         undistortPoints(imagepoints[i], cornersUndist,
                         cameraMatrix, distCoeffs, noArray(), newMatrix);
 
-        // 在去畸变图上画角点
+        // 在去畸变图上画角点并标号（完全复刻参考图效果）
         Mat undistortedShow = undistorted.clone();
-        drawChessboardCorners(undistortedShow, CHESSBOARD_SIZE, cornersUndist, true);
+        
+        // 定义 7 种颜色 (B, G, R)，从下到上依次对应 红、橙、黄、绿、蓝、紫、青
+        vector<Scalar> colors = {
+            Scalar(0, 0, 255),     // 第1行：红 (点 1~10)
+            Scalar(0, 165, 255),   // 第2行：橙 (点 11~20)
+            Scalar(0, 255, 255),   // 第3行：黄 (点 21~30)
+            Scalar(0, 255, 0),     // 第4行：绿 (点 31~40)
+            Scalar(255, 0, 0),     // 第5行：蓝 (点 41~50)
+            Scalar(255, 0, 255),   // 第6行：紫 (点 51~60)
+            Scalar(255, 255, 0)    // 第7行：青 (点 61~70)
+        };
 
-        // 保存
+        int cols = CHESSBOARD_SIZE.width;  // 每行 10 个点
+
+        // 1. 先画每行的连线
+        for (int r = 0; r < CHESSBOARD_SIZE.height; r++)
+        {
+            Scalar color = colors[r % colors.size()];
+            for (int c = 0; c < cols - 1; c++) // 连到倒数第二个点即可
+            {
+                int idx1 = r * cols + c;
+                int idx2 = r * cols + c + 1;
+                // 画一条线宽为 1 的实线
+                line(undistortedShow, cornersUndist[idx1], cornersUndist[idx2], color, 1, LINE_AA);
+            }
+        }
+
+        // 2. 再画圆点和数字
+        for (size_t k = 0; k < cornersUndist.size(); k++)
+        {
+            Point2f pt = cornersUndist[k];
+            
+            int row = k / cols; 
+            Scalar color = colors[row % colors.size()]; 
+
+            // 画实心圆点
+            circle(undistortedShow, pt, 3, color, -1, LINE_AA);
+            
+            // 标数字序号
+            string text = to_string(k + 1);
+            
+           
+            putText(undistortedShow, text, pt + Point2f(-6, 14),
+                    FONT_HERSHEY_SIMPLEX, 0.4, color, 1, LINE_AA);
+        }
+
+        // 保存去畸变图
         string name    = fs::path(valid_images[i]).filename().string();
         string outPath = (fs::path(AFTER_CORNER) / name).string();
         if (imwrite(outPath, undistortedShow))
@@ -190,8 +243,9 @@ int main()
             cerr << "保存失败: " << outPath << endl;
 
         imshow("undistorted + corners", undistortedShow);
-        waitKey(100);
+        waitKey(500);   
     }
+    
     destroyAllWindows();
     return 0;
 }
