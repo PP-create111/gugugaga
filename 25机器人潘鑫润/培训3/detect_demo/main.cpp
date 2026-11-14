@@ -16,7 +16,7 @@ float getDistance(RotatedRect a, RotatedRect b);
 int main()
 {
     // ================= 任务 2：读取视频并识别装甲板 =================
-    string videoPath = "../test_clip.mp4"; 
+    string videoPath = "./test_clip.mp4"; 
     VideoCapture cap(videoPath);
 
     if (!cap.isOpened())

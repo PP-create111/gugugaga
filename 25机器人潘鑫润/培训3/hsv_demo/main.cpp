@@ -109,12 +109,12 @@ static cv::Mat flatten(const std::vector<std::pair<std::string, cv::Mat>> &imgs)
 }
 
 // ==================== 主函数 ====================
-int main()
+int main(int argc,char **argv)
 {
     const std::string outDir = "output";
     ensure_dir(outDir);
 
-    std::string imagepath = "../armor.jpg";           // 双引号
+    const std::string imagepath = (argc>1)?argv[1]:"armor.jpg";           // 双引号
     cv::Mat src = cv::imread(imagepath);
     if (src.empty())
     {
